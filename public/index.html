@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Online Test Platform</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;min-height:100vh}
+.hidden{display:none!important}
+nav{background:#1a237e;color:#fff;padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
+nav h1{font-size:18px}
+nav button{background:#fff;color:#1a237e;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-weight:600}
+.container{max-width:1000px;margin:24px auto;padding:0 16px}
+.card{background:#fff;border-radius:8px;padding:24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.card h2{color:#1a237e;margin-bottom:16px}
+.btn{padding:10px 20px;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:600;margin-right:8px;margin-bottom:8px}
+.btn-primary{background:#1a237e;color:#fff}
+.btn-success{background:#2e7d32;color:#fff}
+.btn-danger{background:#c62828;color:#fff}
+.btn-secondary{background:#e8eaf6;color:#1a237e}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+input,select,textarea{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:14px;margin-bottom:12px}
+label{display:block;font-weight:600;margin-bottom:4px;color:#333}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #eee}
+th{background:#f5f5f5;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;padding:20px;border-radius:8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.stat-card h3{font-size:32px;color:#1a237e}
+.stat-card p{color:#666;margin-top:4px}
+.timer{position:fixed;top:60px;right:20px;background:#c62828;color:#fff;padding:12px 20px;border-radius:8px;font-size:18px;font-weight:700;z-index:100}
+.question-card{background:#fff;border-radius:8px;padding:20px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.question-card h3{margin-bottom:12px;color:#333}
+.option{display:block;padding:10px 16px;margin:6px 0;border:2px solid #e0e0e0;border-radius:6px;cursor:pointer;transition:all .2s}
+.option:hover{border-color:#1a237e;background:#e8eaf6}
+.option.selected{border-color:#1a237e;background:#c5cae9}
+.warning-banner{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#ff6f00;color:#fff;padding:12px 24px;border-radius:8px;font-weight:600;z-index:200;animation:shake .5s}
+@keyframes shake{0%,100%{transform:translateX(-50%)}25%{transform:translateX(calc(-50% - 10px))}75%{transform:translateX(calc(-50% + 10px))}}
+.login-page{display:flex;justify-content:center;align-items:center;min-height:100vh;background:linear-gradient(135deg,#1a237e,#283593)}
+.login-box{background:#fff;padding:40px;border-radius:12px;width:100%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.login-box h1{color:#1a237e;margin-bottom:24px;text-align:center}
+.disclaimer{background:#fff3e0;border:1px solid #ff9800;border-radius:8px;padding:16px;margin-bottom:16px;font-size:13px;color:#e65100}
+.tab-bar{display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid #e0e0e0}
+.tab{padding:10px 20px;cursor:pointer;font-weight:600;color:#666;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab.active{color:#1a237e;border-bottom-color:#1a237e}
+</style>
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage" class="login-page">
+<div class="login-box">
+<h1>Online Test Platform</h1>
+<div id="loginError" class="hidden" style="background:#ffebee;color:#c62828;padding:10px;border-radius:4px;margin-bottom:12px"></div>
+
+<div id="candidateLoginForm">
+<h3 style="margin-bottom:16px;color:#333;text-align:center">Enter your details to start</h3>
+<label>Full Name</label>
+<input type="text" id="candName" placeholder="e.g., Rahul Sharma">
+<label>Employee ID</label>
+<input type="text" id="candEmpId" placeholder="e.g., EMP12345">
+<label>Team Name</label>
+<input type="text" id="candTeam" placeholder="e.g., Cloud Operations">
+<button class="btn btn-primary" style="width:100%" onclick="candidateLogin()">Start</button>
+<p style="margin-top:16px;text-align:center"><a href="#" onclick="showAdminLogin()" style="color:#666;font-size:13px">Admin Login →</a></p>
+</div>
+
+<div id="adminLoginForm" class="hidden">
+<h3 style="margin-bottom:16px;color:#333;text-align:center">Admin Login</h3>
+<label>Username</label>
+<input type="text" id="loginUser" placeholder="admin">
+<label>Password</label>
+<input type="password" id="loginPass" placeholder="Enter password">
+<button class="btn btn-primary" style="width:100%" onclick="login()">Login</button>
+<p style="margin-top:16px;text-align:center"><a href="#" onclick="showCandidateLogin()" style="color:#666;font-size:13px">← Back to Candidate Login</a></p>
+</div>
+
+<p style="margin-top:16px;text-align:center;color:#666;font-size:13px">
+<strong>Note:</strong> Browser-based monitoring cannot fully lock the device. Stronger enforcement requires kiosk mode or a secure browser.
+</p>
+</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="hidden">
+<nav>
+<h1>Online Test Platform</h1>
+<div>
+<span id="navUser" style="margin-right:16px"></span>
+<button onclick="logout()">Logout</button>
+</div>
+</nav>
+
+<!-- ADMIN DASHBOARD -->
+<div id="adminView" class="hidden">
+<div class="container">
+<div class="tab-bar">
+<div class="tab active" onclick="showAdminTab('dashboard')">Dashboard</div>
+<div class="tab" onclick="showAdminTab('tests')">Tests</div>
+<div class="tab" onclick="showAdminTab('create')">Create Test</div>
+<div class="tab" onclick="showAdminTab('audit')">Audit Logs</div>
+</div>
+
+<div id="adminDashboard">
+<div class="stats" id="statsGrid"></div>
+</div>
+
+<div id="adminTests" class="hidden">
+<div class="card">
+<h2>All Tests</h2>
+<div id="testsList"></div>
+</div>
+</div>
+
+<div id="adminCreate" class="hidden">
+<div class="card">
+<h2>Create New Test</h2>
+<label>Title</label><input type="text" id="testTitle" placeholder="Test title">
+<label>Description</label><textarea id="testDesc" placeholder="Description"></textarea>
+<label>Duration (minutes)</label><input type="number" id="testDuration" value="60">
+<label>Max Violations before auto-submit</label><input type="number" id="testMaxViolations" value="5">
+<label><input type="checkbox" id="testRandomize" checked style="width:auto;margin-right:8px">Randomize questions</label><br><br>
+<button class="btn btn-primary" onclick="createTest()">Create Test</button>
+</div>
+<div class="card">
+<h2>Upload Questions</h2>
+<p style="margin-bottom:12px;color:#666">CSV/XLSX columns: question, option_a, option_b, option_c, option_d, correct_answer, marks</p>
+<label>Select Test</label><select id="uploadTestId"></select>
+<label>File (CSV/XLSX/JSON)</label><input type="file" id="questionFile" accept=".csv,.xlsx,.xls,.json">
+<button class="btn btn-success" onclick="uploadQuestions()">Upload Questions</button>
+</div>
+</div>
+
+<div id="adminAudit" class="hidden">
+<div class="card">
+<h2>Audit Logs</h2>
+<table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th><th>IP</th></tr></thead><tbody id="auditBody"></tbody></table>
+</div>
+</div>
+
+<!-- Test detail modal -->
+<div id="testDetail" class="hidden">
+<div class="card">
+<h2 id="testDetailTitle"></h2>
+<div style="margin-bottom:16px">
+<button class="btn btn-secondary" onclick="loadAdminTests();document.getElementById('testDetail').classList.add('hidden')">← Back</button>
+<button class="btn btn-success" id="exportBtn" onclick="exportResults()">Download Results (Excel)</button>
+<button class="btn btn-danger" onclick="exportViolations()">Download Violations</button>
+</div>
+<h3 style="margin-bottom:8px">Submissions</h3>
+<table><thead><tr><th>Name</th><th>Score</th><th>Violations</th><th>Submitted</th></tr></thead><tbody id="sessionsBody"></tbody></table>
+</div>
+</div>
+</div>
+</div>
+
+<!-- CANDIDATE VIEW -->
+<div id="candidateView" class="hidden">
+<div class="container">
+<div id="candidateHome">
+<div class="card">
+<h2>Available Tests</h2>
+<div class="disclaimer">
+<strong>⚠ Anti-Cheating Notice:</strong> This test monitors tab switches, window focus loss, page visibility changes, and fullscreen exits. Violations are logged with timestamps. Exceeding the violation limit will auto-submit your test. Copy/paste and right-click are disabled during the test.<br><br>
+<em>Note: Browser-only monitoring cannot fully lock the device. Stronger enforcement requires kiosk mode or a secure browser.</em>
+</div>
+<div id="availableTests"></div>
+</div>
+<div class="card">
+<h2>My Results</h2>
+<table><thead><tr><th>Test</th><th>Score</th><th>Violations</th><th>Date</th></tr></thead><tbody id="myResultsBody"></tbody></table>
+</div>
+</div>
+
+<!-- Test taking view -->
+<div id="testTaking" class="hidden">
+<div id="timerDisplay" class="timer"></div>
+<div id="warningBanner" class="warning-banner hidden"></div>
+<div id="questionsContainer"></div>
+<div style="margin-top:20px;text-align:center">
+<button class="btn btn-primary" onclick="submitTest()">Submit Test</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+const API = '';
+let token = localStorage.getItem('token');
+let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+let currentSession = null;
+let timerInterval = null;
+let answers = {};
+let autosaveInterval = null;
+
+// --- API Helper ---
+async function api(url, opts = {}) {
+  const res = await fetch(API + url, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, ...(opts.headers || {}) },
+    credentials: 'include'
+  });
+  if (res.status === 401) { logout(); return null; }
+  return res;
+}
+
+// --- AUTH ---
+function showAdminLogin() { document.getElementById('candidateLoginForm').classList.add('hidden'); document.getElementById('adminLoginForm').classList.remove('hidden'); }
+function showCandidateLogin() { document.getElementById('adminLoginForm').classList.add('hidden'); document.getElementById('candidateLoginForm').classList.remove('hidden'); }
+
+async function candidateLogin() {
+  const full_name = document.getElementById('candName').value.trim();
+  const employee_id = document.getElementById('candEmpId').value.trim();
+  const team_name = document.getElementById('candTeam').value.trim();
+  if (!full_name || !employee_id || !team_name) { alert('Please fill in all fields.'); return; }
+  const res = await fetch(API + '/api/auth/candidate-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name, employee_id, team_name }) });
+  const data = await res.json();
+  if (!res.ok) { document.getElementById('loginError').textContent = data.error; document.getElementById('loginError').classList.remove('hidden'); return; }
+  token = data.token; currentUser = data.user;
+  localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(currentUser));
+  showApp();
+}
+
+async function login() {
+  const username = document.getElementById('loginUser').value;
+  const password = document.getElementById('loginPass').value;
+  const res = await fetch(API + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+  const data = await res.json();
+  if (!res.ok) { document.getElementById('loginError').textContent = data.error; document.getElementById('loginError').classList.remove('hidden'); return; }
+  token = data.token; currentUser = data.user;
+  localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(currentUser));
+  showApp();
+}
+
+function logout() {
+  token = null; currentUser = null;
+  localStorage.removeItem('token'); localStorage.removeItem('user');
+  clearInterval(timerInterval); clearInterval(autosaveInterval);
+  document.getElementById('mainApp').classList.add('hidden');
+  document.getElementById('loginPage').classList.remove('hidden');
+}
+
+function showApp() {
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('mainApp').classList.remove('hidden');
+  document.getElementById('navUser').textContent = currentUser.full_name || currentUser.username + ' (' + currentUser.role + ')';
+  if (currentUser.role === 'admin') { document.getElementById('adminView').classList.remove('hidden'); document.getElementById('candidateView').classList.add('hidden'); loadDashboard(); }
+  else { document.getElementById('candidateView').classList.remove('hidden'); document.getElementById('adminView').classList.add('hidden'); loadCandidateHome(); }
+}
+
+// --- ADMIN ---
+function showAdminTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', ['dashboard','tests','create','audit'][i] === tab));
+  document.getElementById('adminDashboard').classList.toggle('hidden', tab !== 'dashboard');
+  document.getElementById('adminTests').classList.toggle('hidden', tab !== 'tests');
+  document.getElementById('adminCreate').classList.toggle('hidden', tab !== 'create');
+  document.getElementById('adminAudit').classList.toggle('hidden', tab !== 'audit');
+  document.getElementById('testDetail').classList.add('hidden');
+  if (tab === 'dashboard') loadDashboard();
+  if (tab === 'tests') loadAdminTests();
+  if (tab === 'create') loadTestSelect();
+  if (tab === 'audit') loadAuditLogs();
+}
+
+async function loadDashboard() {
+  const res = await api('/api/admin/dashboard'); const d = await res.json();
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><h3>${d.tests}</h3><p>Tests</p></div>
+    <div class="stat-card"><h3>${d.candidates}</h3><p>Candidates</p></div>
+    <div class="stat-card"><h3>${d.submissions}</h3><p>Submissions</p></div>
+    <div class="stat-card"><h3>${d.violations}</h3><p>Violations</p></div>`;
+}
+
+async function loadAdminTests() {
+  const res = await api('/api/admin/tests'); const tests = await res.json();
+  let html = '<table><thead><tr><th>Title</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  for (const t of tests) {
+    html += `<tr><td>${t.title}</td><td>${t.duration_minutes}m</td><td>${t.is_published ? '✅ Published' : '⏸ Draft'}</td><td>
+      <button class="btn btn-secondary" onclick="togglePublish(${t.id},${!t.is_published})">${t.is_published ? 'Unpublish' : 'Publish'}</button>
+      <button class="btn btn-primary" onclick="viewTestDetail(${t.id},'${t.title.replace(/'/g,"\\'")}')">View</button>
+      <button class="btn btn-danger" onclick="deleteTest(${t.id})">Delete</button></td></tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('testsList').innerHTML = html;
+}
+
+async function createTest() {
+  const body = { title: document.getElementById('testTitle').value, description: document.getElementById('testDesc').value, duration_minutes: +document.getElementById('testDuration').value, max_violations: +document.getElementById('testMaxViolations').value, randomize_questions: document.getElementById('testRandomize').checked };
+  await api('/api/admin/tests', { method: 'POST', body: JSON.stringify(body) });
+  alert('Test created!'); loadTestSelect();
+}
+
+async function loadTestSelect() {
+  const res = await api('/api/admin/tests'); const tests = await res.json();
+  document.getElementById('uploadTestId').innerHTML = tests.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+}
+
+async function uploadQuestions() {
+  const testId = document.getElementById('uploadTestId').value;
+  const file = document.getElementById('questionFile').files[0];
+  if (!file) { alert('Select a file'); return; }
+  const fd = new FormData(); fd.append('file', file);
+  const res = await fetch(API + `/api/admin/tests/${testId}/questions/upload`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd });
+  const data = await res.json();
+  alert(data.message || data.error);
+}
+
+async function togglePublish(id, publish) {
+  await api(`/api/admin/tests/${id}/publish`, { method: 'PATCH', body: JSON.stringify({ is_published: publish }) });
+  loadAdminTests();
+}
+
+async function deleteTest(id) { if (!confirm('Delete this test?')) return; await api(`/api/admin/tests/${id}`, { method: 'DELETE' }); loadAdminTests(); }
+
+async function viewTestDetail(id, title) {
+  document.getElementById('testDetail').classList.remove('hidden');
+  document.getElementById('adminTests').classList.add('hidden');
+  document.getElementById('testDetailTitle').textContent = title;
+  document.getElementById('testDetail').dataset.testId = id;
+  const res = await api(`/api/admin/tests/${id}/sessions`); const sessions = await res.json();
+  document.getElementById('sessionsBody').innerHTML = sessions.map(s => `<tr><td>${s.full_name||s.username}</td><td>${s.score}/${s.total_marks}</td><td>${s.violation_count}</td><td>${s.submitted_at}</td></tr>`).join('');
+}
+
+function exportResults() { window.open(API + `/api/export/tests/${document.getElementById('testDetail').dataset.testId}/export?token=${token}`); }
+function exportViolations() { window.open(API + `/api/export/tests/${document.getElementById('testDetail').dataset.testId}/violations/export?token=${token}`); }
+
+async function loadAuditLogs() {
+  const res = await api('/api/admin/audit-logs'); const logs = await res.json();
+  document.getElementById('auditBody').innerHTML = logs.map(l => `<tr><td>${l.timestamp}</td><td>${l.username||'—'}</td><td>${l.action}</td><td>${l.details||''}</td><td>${l.ip_address||''}</td></tr>`).join('');
+}
+
+// --- CANDIDATE ---
+async function loadCandidateHome() {
+  const res = await api('/api/admin/tests'); const tests = await res.json();
+  document.getElementById('availableTests').innerHTML = tests.length ? tests.map(t => `<div style="padding:12px 0;border-bottom:1px solid #eee"><strong>${t.title}</strong> — ${t.duration_minutes} min <button class="btn btn-primary" onclick="startTest(${t.id})">Start Test</button></div>`).join('') : '<p>No tests available.</p>';
+  const res2 = await api('/api/candidate/my-results'); const results = await res2.json();
+  document.getElementById('myResultsBody').innerHTML = results.map(r => `<tr><td>${r.title}</td><td>${r.score}/${r.total_marks}</td><td>${r.violations}</td><td>${r.submitted_at}</td></tr>`).join('');
+}
+
+async function startTest(testId) {
+  const res = await api(`/api/candidate/tests/${testId}/start`, { method: 'POST' });
+  const data = await res.json();
+  currentSession = data;
+  answers = data.answers || {};
+  document.getElementById('candidateHome').classList.add('hidden');
+  document.getElementById('testTaking').classList.remove('hidden');
+  renderQuestions(data.questions);
+  startTimer(data.test.duration_minutes, data.started_at);
+  startAntiCheat();
+  autosaveInterval = setInterval(autosave, 15000);
+}
+
+function renderQuestions(questions) {
+  document.getElementById('questionsContainer').innerHTML = questions.map((q, i) => `
+    <div class="question-card"><h3>Q${i+1}. ${q.question_text}</h3>
+    ${['a','b','c','d'].map(o => q['option_'+o] ? `<div class="option ${answers[q.id]===o?'selected':''}" onclick="selectAnswer(${q.id},'${o}',this)">${o.toUpperCase()}) ${q['option_'+o]}</div>` : '').join('')}
+    </div>`).join('');
+}
+
+function selectAnswer(qId, opt, el) {
+  answers[qId] = opt;
+  el.parentElement.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function startTimer(minutes, startedAt) {
+  const endTime = new Date(startedAt).getTime() + minutes * 60000;
+  timerInterval = setInterval(() => {
+    const left = Math.max(0, endTime - Date.now());
+    const m = Math.floor(left / 60000); const s = Math.floor((left % 60000) / 1000);
+    document.getElementById('timerDisplay').textContent = `⏱ ${m}:${s.toString().padStart(2,'0')}`;
+    if (left <= 0) { clearInterval(timerInterval); submitTest(); }
+  }, 1000);
+}
+
+async function autosave() {
+  if (!currentSession) return;
+  await api(`/api/candidate/sessions/${currentSession.session_id}/save`, { method: 'POST', body: JSON.stringify({ answers }) });
+}
+
+async function submitTest() {
+  if (!currentSession) return;
+  clearInterval(timerInterval); clearInterval(autosaveInterval);
+  removeAntiCheat();
+  const res = await api(`/api/candidate/sessions/${currentSession.session_id}/submit`, { method: 'POST', body: JSON.stringify({ answers }) });
+  const data = await res.json();
+  currentSession = null;
+  document.getElementById('testTaking').classList.add('hidden');
+  document.getElementById('candidateHome').classList.remove('hidden');
+  alert(`Test submitted! Score: ${data.score}/${data.total}`);
+  loadCandidateHome();
+}
+
+// --- ANTI-CHEAT ---
+let violationCount = 0;
+function startAntiCheat() {
+  violationCount = 0;
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  window.addEventListener('blur', onBlur);
+  document.addEventListener('fullscreenchange', onFullscreenExit);
+  document.addEventListener('copy', prevent);
+  document.addEventListener('paste', prevent);
+  document.addEventListener('contextmenu', prevent);
+  document.addEventListener('keydown', onKeyDown);
+  // Request fullscreen
+  document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(()=>{});
+}
+
+function removeAntiCheat() {
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  window.removeEventListener('blur', onBlur);
+  document.removeEventListener('fullscreenchange', onFullscreenExit);
+  document.removeEventListener('copy', prevent);
+  document.removeEventListener('paste', prevent);
+  document.removeEventListener('contextmenu', prevent);
+  document.removeEventListener('keydown', onKeyDown);
+  if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+}
+
+function prevent(e) { e.preventDefault(); }
+function onKeyDown(e) { if ((e.ctrlKey||e.metaKey) && ['c','v','a','u'].includes(e.key.toLowerCase())) e.preventDefault(); }
+
+function onVisibilityChange() { if (document.hidden) logViolation('TAB_SWITCH', 'Page became hidden (tab switch or minimize)'); }
+function onBlur() { logViolation('WINDOW_BLUR', 'Window lost focus'); }
+function onFullscreenExit() { if (!document.fullscreenElement && currentSession) logViolation('FULLSCREEN_EXIT', 'Exited fullscreen mode'); }
+
+async function logViolation(type, details) {
+  if (!currentSession) return;
+  showWarning(`⚠ Warning: ${type.replace(/_/g,' ')} detected!`);
+  const res = await api(`/api/candidate/sessions/${currentSession.session_id}/violation`, { method: 'POST', body: JSON.stringify({ type, details }) });
+  const data = await res.json();
+  if (data && data.auto_submitted) { alert('Test auto-submitted due to too many violations!'); currentSession = null; clearInterval(timerInterval); clearInterval(autosaveInterval); removeAntiCheat(); document.getElementById('testTaking').classList.add('hidden'); document.getElementById('candidateHome').classList.remove('hidden'); loadCandidateHome(); }
+}
+
+function showWarning(msg) {
+  const el = document.getElementById('warningBanner');
+  el.textContent = msg; el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+// --- INIT ---
+if (token && currentUser) showApp();
+
+// Handle export with token in query (for file downloads)
+const origFetch = window.fetch;
+window.fetch = function(url, opts) { return origFetch(url, opts); };
+</script>
+</body>
+</html>
