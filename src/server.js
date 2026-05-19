@@ -3,6 +3,9 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
 
+// Auto-seed on startup
+require('./seed');
+
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
