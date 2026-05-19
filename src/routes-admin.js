@@ -85,17 +85,14 @@ router.get('/dashboard', authMiddleware, adminOnly, (req, res) => {
 });
 
 router.get('/tests/:id/sessions', authMiddleware, adminOnly, (req, res) => {
-  const sessions = prepare(`
-    SELECT s.*, u.username, u.full_name FROM sessions s
-    JOIN users u ON s.user_id = u.id
-    WHERE s.test_id = ? AND s.is_submitted = 1
-    ORDER BY s.submitted_at DESC
-  `).all(+req.params.id);
-  // Add violation count
-  sessions.forEach(s => {
-    s.violation_count = prepare('SELECT COUNT(*) as c FROM violations WHERE session_id = ?').get(s.id).c;
+  const sessions = prepare('SELECT * FROM sessions WHERE test_id = ? AND is_submitted = 1 ORDER BY submitted_at DESC').all(+req.params.id);
+  // Enrich with user info and violation count
+  const enriched = sessions.map(s => {
+    const user = prepare('SELECT username, full_name, team_name FROM users WHERE id = ?').get(s.user_id);
+    const violation_count = prepare('SELECT COUNT(*) as c FROM violations WHERE session_id = ?').get(s.id).c;
+    return { ...s, username: user ? user.username : 'unknown', full_name: user ? user.full_name : 'unknown', team_name: user ? user.team_name : '', violation_count };
   });
-  res.json(sessions);
+  res.json(enriched);
 });
 
 router.get('/audit-logs', authMiddleware, adminOnly, (req, res) => {

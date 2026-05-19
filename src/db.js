@@ -22,7 +22,7 @@ async function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('admin','candidate')),
+      role TEXT NOT NULL,
       full_name TEXT,
       team_name TEXT,
       created_at TEXT DEFAULT (datetime('now'))
@@ -88,45 +88,62 @@ function saveDb() {
   fs.writeFileSync(DB_PATH, Buffer.from(data));
 }
 
-// Helper to run queries like better-sqlite3 API
 function prepare(sql) {
   return {
     run(...params) {
       const stmt = db.prepare(sql);
-      if (params.length > 0) stmt.bind(params);
-      stmt.step();
-      stmt.free();
+      try {
+        if (params.length > 0) {
+          // Convert undefined/null params
+          const cleaned = params.map(p => p === undefined ? null : p);
+          stmt.bind(cleaned);
+        }
+        stmt.step();
+      } finally {
+        stmt.free();
+      }
       saveDb();
       const r = db.exec("SELECT last_insert_rowid() as id");
       return { lastInsertRowid: r[0] ? r[0].values[0][0] : 0 };
     },
     get(...params) {
       const stmt = db.prepare(sql);
-      stmt.bind(params);
-      if (stmt.step()) {
-        const cols = stmt.getColumnNames();
-        const vals = stmt.get();
+      try {
+        if (params.length > 0) {
+          const cleaned = params.map(p => p === undefined ? null : p);
+          stmt.bind(cleaned);
+        }
+        if (stmt.step()) {
+          const cols = stmt.getColumnNames();
+          const vals = stmt.get();
+          const obj = {};
+          cols.forEach((c, i) => obj[c] = vals[i]);
+          return obj;
+        }
+        return undefined;
+      } finally {
         stmt.free();
-        const obj = {};
-        cols.forEach((c, i) => obj[c] = vals[i]);
-        return obj;
       }
-      stmt.free();
-      return undefined;
     },
     all(...params) {
       const stmt = db.prepare(sql);
-      stmt.bind(params);
-      const results = [];
-      const cols = stmt.getColumnNames();
-      while (stmt.step()) {
-        const vals = stmt.get();
-        const obj = {};
-        cols.forEach((c, i) => obj[c] = vals[i]);
-        results.push(obj);
+      try {
+        if (params.length > 0) {
+          const cleaned = params.map(p => p === undefined ? null : p);
+          stmt.bind(cleaned);
+        }
+        const results = [];
+        while (stmt.step()) {
+          const cols = stmt.getColumnNames();
+          const vals = stmt.get();
+          const obj = {};
+          cols.forEach((c, i) => obj[c] = vals[i]);
+          results.push(obj);
+        }
+        return results;
+      } finally {
+        stmt.free();
       }
-      stmt.free();
-      return results;
     }
   };
 }
