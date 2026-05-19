@@ -3,12 +3,11 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
 const { initDb } = require('./db');
+const { seed } = require('./seed');
 
 async function start() {
   await initDb();
-
-  // Seed after DB init
-  require('./seed');
+  await seed();
 
   const app = express();
   app.use(cors({ origin: true, credentials: true }));
@@ -26,7 +25,7 @@ async function start() {
   });
 
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`Test app running at http://localhost:${PORT}`));
+  app.listen(PORT, () => console.log(`Test app running on port ${PORT}`));
 }
 
 start().catch(err => { console.error('Failed to start:', err); process.exit(1); });

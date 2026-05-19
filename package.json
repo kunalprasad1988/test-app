@@ -5,7 +5,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "build": "npm install"
+    "build": "npm install",
+    "seed": "node src/seed.js"
   },
   "engines": {
     "node": "20.x"
