@@ -92,7 +92,10 @@ function saveDb() {
 function prepare(sql) {
   return {
     run(...params) {
-      db.run(sql, params);
+      const stmt = db.prepare(sql);
+      if (params.length > 0) stmt.bind(params);
+      stmt.step();
+      stmt.free();
       saveDb();
       const r = db.exec("SELECT last_insert_rowid() as id");
       return { lastInsertRowid: r[0] ? r[0].values[0][0] : 0 };
