@@ -1,0 +1,16 @@
+question,option_a,option_b,option_c,option_d,correct_answer,marks
+What does EC2 stand for in AWS?,Elastic Compute Cloud,Electronic Computer Cloud,Elastic Cloud Computing,Enterprise Compute Cloud,a,1
+Which AWS service is used for object storage?,EBS,S3,RDS,DynamoDB,b,1
+What is the default port for SSH?,21,22,80,443,b,1
+Which AWS service provides managed relational databases?,S3,Lambda,RDS,CloudFront,c,1
+What does IAM stand for?,Internet Access Management,Identity and Access Management,Internal Account Manager,Integrated Auth Module,b,1
+Which protocol does HTTPS use for encryption?,SSH,TLS/SSL,FTP,SMTP,b,1
+What is the purpose of a Security Group in AWS?,Manage users,Firewall for EC2 instances,Store secrets,Monitor logs,b,1
+Which Linux command shows running processes?,ls,top,cd,mkdir,b,1
+What is the maximum size of an S3 object?,1 GB,5 TB,10 TB,Unlimited,b,1
+Which AWS service is serverless compute?,EC2,Lambda,ECS,Lightsail,b,1
+What does DNS stand for?,Domain Name System,Data Network Service,Digital Name Server,Domain Node System,a,1
+Which command is used to change file permissions in Linux?,chmod,chown,chgrp,chdir,a,1
+What is a VPC in AWS?,Virtual Private Cloud,Virtual Public Cloud,Virtual Protected Container,Virtual Private Container,a,1
+Which HTTP status code means Not Found?,200,301,404,500,c,1
+What is the purpose of CloudWatch in AWS?,Compute,Monitoring and logging,Storage,Networking,b,1

@@ -88,4 +88,9 @@ router.get('/my-results', authMiddleware, (req, res) => {
   res.json(results);
 });
 
+// Candidate: list published tests
+router.get('/tests', authMiddleware, (req, res) => {
+  res.json(prepare('SELECT id, title, description, duration_minutes FROM tests WHERE is_published = 1').all());
+});
+
 module.exports = router;

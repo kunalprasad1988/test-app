@@ -26,8 +26,8 @@ router.post('/candidate-login', (req, res) => {
   let user = prepare('SELECT * FROM users WHERE username = ?').get(employee_id);
   if (!user) {
     const hash = bcrypt.hashSync(employee_id + '-auto', 10);
-    const result = prepare('INSERT INTO users (username, password, full_name, role, team_name) VALUES (?, ?, ?, ?, ?)').run(employee_id, hash, full_name, 'candidate', team_name);
-    user = prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+    prepare('INSERT INTO users (username, password, full_name, role, team_name) VALUES (?, ?, ?, ?, ?)').run(employee_id, hash, full_name, 'candidate', team_name);
+    user = prepare('SELECT * FROM users WHERE username = ?').get(employee_id);
     logAudit(user.id, 'SELF_REGISTER', `${full_name} (${employee_id}) from ${team_name}`, req.ip);
   }
   const token = generateToken(user);

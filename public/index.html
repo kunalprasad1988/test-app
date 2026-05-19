@@ -334,7 +334,7 @@ async function loadAuditLogs() {
 
 // --- CANDIDATE ---
 async function loadCandidateHome() {
-  const res = await api('/api/admin/tests'); const tests = await res.json();
+  const res = await api('/api/candidate/tests'); const tests = await res.json();
   document.getElementById('availableTests').innerHTML = tests.length ? tests.map(t => `<div style="padding:12px 0;border-bottom:1px solid #eee"><strong>${t.title}</strong> — ${t.duration_minutes} min <button class="btn btn-primary" onclick="startTest(${t.id})">Start Test</button></div>`).join('') : '<p>No tests available.</p>';
   const res2 = await api('/api/candidate/my-results'); const results = await res2.json();
   document.getElementById('myResultsBody').innerHTML = results.map(r => `<tr><td>${r.title}</td><td>${r.score}/${r.total_marks}</td><td>${r.violations}</td><td>${r.submitted_at}</td></tr>`).join('');
