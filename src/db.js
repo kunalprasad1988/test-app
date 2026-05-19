@@ -1,84 +1,133 @@
-const Database = require('better-sqlite3');
+const initSqlJs = require('sql.js');
+const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
 const DB_PATH = path.join(__dirname, '..', 'data.db');
 const ENCRYPTION_KEY = crypto.scryptSync('test-app-secret-key-change-in-prod', 'salt', 32);
 
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+let db;
 
-// Create tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL CHECK(role IN ('admin','candidate')),
-    full_name TEXT,
-    team_name TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
-  );
+async function initDb() {
+  const SQL = await initSqlJs();
+  if (fs.existsSync(DB_PATH)) {
+    const buf = fs.readFileSync(DB_PATH);
+    db = new SQL.Database(buf);
+  } else {
+    db = new SQL.Database();
+  }
 
-  CREATE TABLE IF NOT EXISTS tests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    description TEXT,
-    duration_minutes INTEGER NOT NULL DEFAULT 60,
-    max_violations INTEGER NOT NULL DEFAULT 5,
-    is_published INTEGER DEFAULT 0,
-    randomize_questions INTEGER DEFAULT 1,
-    created_by INTEGER REFERENCES users(id),
-    created_at TEXT DEFAULT (datetime('now'))
-  );
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('admin','candidate')),
+      full_name TEXT,
+      team_name TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS tests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      duration_minutes INTEGER NOT NULL DEFAULT 60,
+      max_violations INTEGER NOT NULL DEFAULT 5,
+      is_published INTEGER DEFAULT 0,
+      randomize_questions INTEGER DEFAULT 1,
+      created_by INTEGER,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS questions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      test_id INTEGER,
+      question_text TEXT NOT NULL,
+      option_a TEXT,
+      option_b TEXT,
+      option_c TEXT,
+      option_d TEXT,
+      correct_answer TEXT,
+      marks INTEGER DEFAULT 1
+    );
+    CREATE TABLE IF NOT EXISTS sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      test_id INTEGER,
+      started_at TEXT DEFAULT (datetime('now')),
+      submitted_at TEXT,
+      is_submitted INTEGER DEFAULT 0,
+      score INTEGER,
+      total_marks INTEGER,
+      answers_encrypted TEXT,
+      question_order TEXT
+    );
+    CREATE TABLE IF NOT EXISTS violations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id INTEGER,
+      user_id INTEGER,
+      test_id INTEGER,
+      type TEXT NOT NULL,
+      timestamp TEXT DEFAULT (datetime('now')),
+      details TEXT
+    );
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      action TEXT NOT NULL,
+      details TEXT,
+      ip_address TEXT,
+      timestamp TEXT DEFAULT (datetime('now'))
+    );
+  `);
+  saveDb();
+  return db;
+}
 
-  CREATE TABLE IF NOT EXISTS questions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    test_id INTEGER REFERENCES tests(id) ON DELETE CASCADE,
-    question_text TEXT NOT NULL,
-    option_a TEXT,
-    option_b TEXT,
-    option_c TEXT,
-    option_d TEXT,
-    correct_answer TEXT,
-    marks INTEGER DEFAULT 1
-  );
+function saveDb() {
+  const data = db.export();
+  fs.writeFileSync(DB_PATH, Buffer.from(data));
+}
 
-  CREATE TABLE IF NOT EXISTS sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER REFERENCES users(id),
-    test_id INTEGER REFERENCES tests(id),
-    started_at TEXT DEFAULT (datetime('now')),
-    submitted_at TEXT,
-    is_submitted INTEGER DEFAULT 0,
-    score INTEGER,
-    total_marks INTEGER,
-    answers_encrypted TEXT,
-    question_order TEXT
-  );
+// Helper to run queries like better-sqlite3 API
+function prepare(sql) {
+  return {
+    run(...params) {
+      db.run(sql, params);
+      saveDb();
+      const r = db.exec("SELECT last_insert_rowid() as id");
+      return { lastInsertRowid: r[0] ? r[0].values[0][0] : 0 };
+    },
+    get(...params) {
+      const stmt = db.prepare(sql);
+      stmt.bind(params);
+      if (stmt.step()) {
+        const cols = stmt.getColumnNames();
+        const vals = stmt.get();
+        stmt.free();
+        const obj = {};
+        cols.forEach((c, i) => obj[c] = vals[i]);
+        return obj;
+      }
+      stmt.free();
+      return undefined;
+    },
+    all(...params) {
+      const stmt = db.prepare(sql);
+      stmt.bind(params);
+      const results = [];
+      const cols = stmt.getColumnNames();
+      while (stmt.step()) {
+        const vals = stmt.get();
+        const obj = {};
+        cols.forEach((c, i) => obj[c] = vals[i]);
+        results.push(obj);
+      }
+      stmt.free();
+      return results;
+    }
+  };
+}
 
-  CREATE TABLE IF NOT EXISTS violations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id INTEGER REFERENCES sessions(id),
-    user_id INTEGER REFERENCES users(id),
-    test_id INTEGER REFERENCES tests(id),
-    type TEXT NOT NULL,
-    timestamp TEXT DEFAULT (datetime('now')),
-    details TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS audit_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    action TEXT NOT NULL,
-    details TEXT,
-    ip_address TEXT,
-    timestamp TEXT DEFAULT (datetime('now'))
-  );
-`);
-
-// Encryption helpers
 function encrypt(text) {
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
@@ -96,4 +145,4 @@ function decrypt(text) {
   return decrypted;
 }
 
-module.exports = { db, encrypt, decrypt };
+module.exports = { initDb, prepare, encrypt, decrypt, saveDb };

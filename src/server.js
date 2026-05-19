@@ -2,26 +2,31 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
+const { initDb } = require('./db');
 
-// Auto-seed on startup
-require('./seed');
+async function start() {
+  await initDb();
 
-const app = express();
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, '..', 'public')));
+  // Seed after DB init
+  require('./seed');
 
-// Routes
-app.use('/api/auth', require('./routes-auth'));
-app.use('/api/admin', require('./routes-admin'));
-app.use('/api/candidate', require('./routes-candidate'));
-app.use('/api/export', require('./routes-export'));
+  const app = express();
+  app.use(cors({ origin: true, credentials: true }));
+  app.use(express.json());
+  app.use(cookieParser());
+  app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// SPA fallback
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
-});
+  app.use('/api/auth', require('./routes-auth'));
+  app.use('/api/admin', require('./routes-admin'));
+  app.use('/api/candidate', require('./routes-candidate'));
+  app.use('/api/export', require('./routes-export'));
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Test app running at http://localhost:${PORT}`));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+  });
+
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`Test app running at http://localhost:${PORT}`));
+}
+
+start().catch(err => { console.error('Failed to start:', err); process.exit(1); });

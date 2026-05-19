@@ -3,65 +3,55 @@ const multer = require('multer');
 const XLSX = require('xlsx');
 const path = require('path');
 const fs = require('fs');
-const { db } = require('./db');
+const { prepare } = require('./db');
 const { authMiddleware, adminOnly } = require('./auth');
 const { logAudit } = require('./audit');
 
 const router = express.Router();
 const upload = multer({ dest: path.join(__dirname, '..', 'uploads') });
 
-// Create test
 router.post('/tests', authMiddleware, adminOnly, (req, res) => {
   const { title, description, duration_minutes, max_violations, randomize_questions } = req.body;
-  const result = db.prepare('INSERT INTO tests (title, description, duration_minutes, max_violations, randomize_questions, created_by) VALUES (?, ?, ?, ?, ?, ?)')
+  const result = prepare('INSERT INTO tests (title, description, duration_minutes, max_violations, randomize_questions, created_by) VALUES (?, ?, ?, ?, ?, ?)')
     .run(title, description, duration_minutes || 60, max_violations || 5, randomize_questions !== false ? 1 : 0, req.user.id);
   logAudit(req.user.id, 'CREATE_TEST', `Test "${title}" created`, req.ip);
   res.json({ id: result.lastInsertRowid, message: 'Test created' });
 });
 
-// List tests
 router.get('/tests', authMiddleware, (req, res) => {
   if (req.user.role === 'admin') {
-    res.json(db.prepare('SELECT * FROM tests ORDER BY created_at DESC').all());
+    res.json(prepare('SELECT * FROM tests ORDER BY created_at DESC').all());
   } else {
-    res.json(db.prepare('SELECT id, title, description, duration_minutes FROM tests WHERE is_published = 1').all());
+    res.json(prepare('SELECT id, title, description, duration_minutes FROM tests WHERE is_published = 1').all());
   }
 });
 
-// Publish/unpublish test
 router.patch('/tests/:id/publish', authMiddleware, adminOnly, (req, res) => {
   const { is_published } = req.body;
-  db.prepare('UPDATE tests SET is_published = ? WHERE id = ?').run(is_published ? 1 : 0, req.params.id);
+  prepare('UPDATE tests SET is_published = ? WHERE id = ?').run(is_published ? 1 : 0, +req.params.id);
   logAudit(req.user.id, 'PUBLISH_TEST', `Test ${req.params.id} ${is_published ? 'published' : 'unpublished'}`, req.ip);
   res.json({ message: 'Updated' });
 });
 
-// Upload questions (CSV/XLSX/JSON)
 router.post('/tests/:id/questions/upload', authMiddleware, adminOnly, upload.single('file'), (req, res) => {
-  const testId = req.params.id;
+  const testId = +req.params.id;
   const filePath = req.file.path;
   const ext = path.extname(req.file.originalname).toLowerCase();
-
   let questions = [];
   try {
     if (ext === '.json') {
       questions = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } else if (ext === '.csv' || ext === '.xlsx' || ext === '.xls') {
+    } else if (['.csv', '.xlsx', '.xls'].includes(ext)) {
       const workbook = XLSX.readFile(filePath);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       questions = XLSX.utils.sheet_to_json(sheet);
     } else {
-      return res.status(400).json({ error: 'Unsupported file format. Use CSV, XLSX, or JSON.' });
+      return res.status(400).json({ error: 'Unsupported format. Use CSV, XLSX, or JSON.' });
     }
-
-    const insert = db.prepare('INSERT INTO questions (test_id, question_text, option_a, option_b, option_c, option_d, correct_answer, marks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-    const insertMany = db.transaction((qs) => {
-      for (const q of qs) {
-        insert.run(testId, q.question || q.question_text, q.option_a || q.a, q.option_b || q.b, q.option_c || q.c, q.option_d || q.d, q.correct_answer || q.answer, q.marks || 1);
-      }
-    });
-    insertMany(questions);
-
+    for (const q of questions) {
+      prepare('INSERT INTO questions (test_id, question_text, option_a, option_b, option_c, option_d, correct_answer, marks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(testId, q.question || q.question_text, q.option_a || q.a, q.option_b || q.b, q.option_c || q.c, q.option_d || q.d, q.correct_answer || q.answer, q.marks || 1);
+    }
     logAudit(req.user.id, 'UPLOAD_QUESTIONS', `${questions.length} questions uploaded to test ${testId}`, req.ip);
     res.json({ message: `${questions.length} questions uploaded` });
   } catch (e) {
@@ -71,46 +61,45 @@ router.post('/tests/:id/questions/upload', authMiddleware, adminOnly, upload.sin
   }
 });
 
-// Get questions for a test (admin only sees answers)
 router.get('/tests/:id/questions', authMiddleware, (req, res) => {
-  const questions = db.prepare('SELECT * FROM questions WHERE test_id = ?').all(req.params.id);
+  const questions = prepare('SELECT * FROM questions WHERE test_id = ?').all(+req.params.id);
   if (req.user.role !== 'admin') {
     questions.forEach(q => delete q.correct_answer);
   }
   res.json(questions);
 });
 
-// Delete test
 router.delete('/tests/:id', authMiddleware, adminOnly, (req, res) => {
-  db.prepare('DELETE FROM tests WHERE id = ?').run(req.params.id);
+  prepare('DELETE FROM questions WHERE test_id = ?').run(+req.params.id);
+  prepare('DELETE FROM tests WHERE id = ?').run(+req.params.id);
   logAudit(req.user.id, 'DELETE_TEST', `Test ${req.params.id} deleted`, req.ip);
   res.json({ message: 'Deleted' });
 });
 
-// Dashboard stats
 router.get('/dashboard', authMiddleware, adminOnly, (req, res) => {
-  const tests = db.prepare('SELECT COUNT(*) as count FROM tests').get().count;
-  const candidates = db.prepare("SELECT COUNT(*) as count FROM users WHERE role='candidate'").get().count;
-  const submissions = db.prepare('SELECT COUNT(*) as count FROM sessions WHERE is_submitted=1').get().count;
-  const violations = db.prepare('SELECT COUNT(*) as count FROM violations').get().count;
+  const tests = prepare('SELECT COUNT(*) as count FROM tests').get().count;
+  const candidates = prepare("SELECT COUNT(*) as count FROM users WHERE role='candidate'").get().count;
+  const submissions = prepare('SELECT COUNT(*) as count FROM sessions WHERE is_submitted=1').get().count;
+  const violations = prepare('SELECT COUNT(*) as count FROM violations').get().count;
   res.json({ tests, candidates, submissions, violations });
 });
 
-// Get all sessions for a test (admin)
 router.get('/tests/:id/sessions', authMiddleware, adminOnly, (req, res) => {
-  const sessions = db.prepare(`
-    SELECT s.*, u.username, u.full_name,
-    (SELECT COUNT(*) FROM violations v WHERE v.session_id = s.id) as violation_count
-    FROM sessions s JOIN users u ON s.user_id = u.id
+  const sessions = prepare(`
+    SELECT s.*, u.username, u.full_name FROM sessions s
+    JOIN users u ON s.user_id = u.id
     WHERE s.test_id = ? AND s.is_submitted = 1
     ORDER BY s.submitted_at DESC
-  `).all(req.params.id);
+  `).all(+req.params.id);
+  // Add violation count
+  sessions.forEach(s => {
+    s.violation_count = prepare('SELECT COUNT(*) as c FROM violations WHERE session_id = ?').get(s.id).c;
+  });
   res.json(sessions);
 });
 
-// Audit logs
 router.get('/audit-logs', authMiddleware, adminOnly, (req, res) => {
-  const logs = db.prepare('SELECT a.*, u.username FROM audit_logs a LEFT JOIN users u ON a.user_id = u.id ORDER BY a.timestamp DESC LIMIT 200').all();
+  const logs = prepare('SELECT a.*, u.username FROM audit_logs a LEFT JOIN users u ON a.user_id = u.id ORDER BY a.timestamp DESC LIMIT 200').all();
   res.json(logs);
 });
 
