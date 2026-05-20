@@ -15,12 +15,12 @@ router.use((req, res, next) => {
 router.get('/tests/:id/export', authMiddleware, adminOnly, async (req, res) => {
   const test = prepare('SELECT * FROM tests WHERE id = ?').get(+req.params.id);
   if (!test) return res.status(404).json({ error: 'Test not found' });
-  const sessions = prepare('SELECT s.*, u.username, u.full_name, u.team_name FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.test_id = ? AND s.is_submitted = 1').all(+req.params.id);
+  const sessions = prepare('SELECT s.*, u.username, u.full_name, u.team_name, u.login_id FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.test_id = ? AND s.is_submitted = 1').all(+req.params.id);
   const questions = prepare('SELECT * FROM questions WHERE test_id = ?').all(+req.params.id);
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Results');
-  const headers = ['Name', 'Employee ID', 'Team', 'Score', 'Total', 'Percentage', 'Submitted At', 'Violations'];
+  const headers = ['Name', 'Login ID', 'Employee ID', 'Team', 'Score', 'Total', 'Percentage', 'Submitted At', 'Violations'];
   questions.forEach((q, i) => headers.push('Q' + (i + 1)));
   ws.addRow(headers);
   ws.getRow(1).font = { bold: true };
@@ -28,7 +28,7 @@ router.get('/tests/:id/export', authMiddleware, adminOnly, async (req, res) => {
   for (const s of sessions) {
     const violations = prepare('SELECT COUNT(*) as c FROM violations WHERE session_id = ?').get(s.id).c;
     const answers = s.answers_encrypted ? JSON.parse(decrypt(s.answers_encrypted)) : {};
-    const row = [s.full_name || s.username, s.username, s.team_name || '', s.score, s.total_marks, s.total_marks ? Math.round(s.score / s.total_marks * 100) + '%' : '0%', s.submitted_at, violations];
+    const row = [s.full_name || s.username, s.login_id || '', s.username, s.team_name || '', s.score, s.total_marks, s.total_marks ? Math.round(s.score / s.total_marks * 100) + '%' : '0%', s.submitted_at, violations];
     questions.forEach(q => row.push(answers[q.id] || ''));
     ws.addRow(row);
   }

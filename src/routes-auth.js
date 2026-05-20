@@ -19,21 +19,21 @@ router.post('/login', (req, res) => {
 });
 
 router.post('/candidate-login', (req, res) => {
-  const { full_name, employee_id, team_name } = req.body;
-  if (!full_name || !employee_id || !team_name) {
+  const { full_name, login_id, employee_id, team_name } = req.body;
+  if (!full_name || !login_id || !employee_id || !team_name) {
     return res.status(400).json({ error: 'All fields are required' });
   }
   let user = prepare('SELECT * FROM users WHERE username = ?').get(employee_id);
   if (!user) {
     const hash = bcrypt.hashSync(employee_id + '-auto', 10);
-    prepare('INSERT INTO users (username, password, full_name, role, team_name) VALUES (?, ?, ?, ?, ?)').run(employee_id, hash, full_name, 'candidate', team_name);
+    prepare('INSERT INTO users (username, password, full_name, role, team_name, login_id) VALUES (?, ?, ?, ?, ?, ?)').run(employee_id, hash, full_name, 'candidate', team_name, login_id);
     user = prepare('SELECT * FROM users WHERE username = ?').get(employee_id);
-    logAudit(user.id, 'SELF_REGISTER', `${full_name} (${employee_id}) from ${team_name}`, req.ip);
+    logAudit(user.id, 'SELF_REGISTER', `${full_name} (${login_id}/${employee_id}) from ${team_name}`, req.ip);
   }
   const token = generateToken(user);
   logAudit(user.id, 'LOGIN', `Candidate login: ${full_name}`, req.ip);
   res.cookie('token', token, { httpOnly: true, maxAge: 8 * 60 * 60 * 1000 });
-  res.json({ token, user: { id: user.id, username: user.username, role: user.role, full_name: user.full_name, team_name: user.team_name } });
+  res.json({ token, user: { id: user.id, username: user.username, role: user.role, full_name: user.full_name, team_name: user.team_name, login_id: user.login_id } });
 });
 
 module.exports = router;

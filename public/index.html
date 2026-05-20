@@ -59,6 +59,8 @@ th{background:#f5f5f5;font-weight:600}
 <h3 style="margin-bottom:16px;color:#333;text-align:center">Enter your details to start</h3>
 <label>Full Name</label>
 <input type="text" id="candName" placeholder="e.g., Rahul Sharma">
+<label>Login ID</label>
+<input type="text" id="candLoginId" placeholder="e.g., rahuls">
 <label>Employee ID</label>
 <input type="text" id="candEmpId" placeholder="e.g., EMP12345">
 <label>Team Name</label>
@@ -213,10 +215,11 @@ function showCandidateLogin() { document.getElementById('adminLoginForm').classL
 
 async function candidateLogin() {
   const full_name = document.getElementById('candName').value.trim();
+  const login_id = document.getElementById('candLoginId').value.trim();
   const employee_id = document.getElementById('candEmpId').value.trim();
   const team_name = document.getElementById('candTeam').value.trim();
-  if (!full_name || !employee_id || !team_name) { alert('Please fill in all fields.'); return; }
-  const res = await fetch(API + '/api/auth/candidate-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name, employee_id, team_name }) });
+  if (!full_name || !login_id || !employee_id || !team_name) { alert('Please fill in all fields.'); return; }
+  const res = await fetch(API + '/api/auth/candidate-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name, login_id, employee_id, team_name }) });
   const data = await res.json();
   if (!res.ok) { document.getElementById('loginError').textContent = data.error; document.getElementById('loginError').classList.remove('hidden'); return; }
   token = data.token; currentUser = data.user;

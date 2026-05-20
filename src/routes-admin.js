@@ -88,9 +88,9 @@ router.get('/tests/:id/sessions', authMiddleware, adminOnly, (req, res) => {
   const sessions = prepare('SELECT * FROM sessions WHERE test_id = ? AND is_submitted = 1 ORDER BY submitted_at DESC').all(+req.params.id);
   // Enrich with user info and violation count
   const enriched = sessions.map(s => {
-    const user = prepare('SELECT username, full_name, team_name FROM users WHERE id = ?').get(s.user_id);
+    const user = prepare('SELECT username, full_name, team_name, login_id FROM users WHERE id = ?').get(s.user_id);
     const violation_count = prepare('SELECT COUNT(*) as c FROM violations WHERE session_id = ?').get(s.id).c;
-    return { ...s, username: user ? user.username : 'unknown', full_name: user ? user.full_name : 'unknown', team_name: user ? user.team_name : '', violation_count };
+    return { ...s, username: user ? user.username : 'unknown', full_name: user ? user.full_name : 'unknown', team_name: user ? user.team_name : '', login_id: user ? user.login_id : '', violation_count };
   });
   res.json(enriched);
 });

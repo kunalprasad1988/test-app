@@ -27,6 +27,7 @@ async function initDb() {
       role TEXT NOT NULL,
       full_name TEXT,
       team_name TEXT,
+      login_id TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     )
   `);
