@@ -1,21 +1,19 @@
 const bcrypt = require('bcryptjs');
-const { initDb, prepare } = require('./db');
+const { prepare } = require('./db');
 
 async function seed() {
-  // Create admin if not exists
-  const admin = prepare('SELECT * FROM users WHERE username = ?').get('admin');
+  const admin = await prepare('SELECT * FROM users WHERE username = ?').get('admin');
   if (!admin) {
     const adminPass = bcrypt.hashSync('admin123', 10);
-    prepare('INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)').run('admin', adminPass, 'admin', 'Administrator');
+    await prepare('INSERT INTO users (username, password, role, full_name) VALUES (?, ?, ?, ?)').run('admin', adminPass, 'admin', 'Administrator');
     console.log('Admin created: admin / admin123');
   }
 
-  // Create sample test if no tests exist
-  const testCount = prepare('SELECT COUNT(*) as c FROM tests').get().c;
+  const testCount = +(await prepare('SELECT COUNT(*) as c FROM tests').get()).c;
   if (testCount === 0) {
-    prepare('INSERT INTO tests (title, description, duration_minutes, max_violations, is_published, randomize_questions, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)').run('Cloud & Linux Basics', 'Sample assessment covering AWS, Linux, and networking fundamentals', 30, 5, 1, 1, 1);
+    await prepare('INSERT INTO tests (title, description, duration_minutes, max_violations, is_published, randomize_questions, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)').run('Cloud & Linux Basics', 'Sample assessment covering AWS, Linux, and networking fundamentals', 30, 5, 1, 1, 1);
 
-    const test = prepare('SELECT id FROM tests LIMIT 1').get();
+    const test = await prepare('SELECT id FROM tests LIMIT 1').get();
     const questions = [
       ['What does EC2 stand for in AWS?', 'Elastic Compute Cloud', 'Electronic Computer Cloud', 'Elastic Cloud Computing', 'Enterprise Compute Cloud', 'a', 1],
       ['Which AWS service is used for object storage?', 'EBS', 'S3', 'RDS', 'DynamoDB', 'b', 1],
@@ -33,19 +31,13 @@ async function seed() {
       ['Which HTTP status code means Not Found?', '200', '301', '404', '500', 'c', 1],
       ['What is the purpose of CloudWatch in AWS?', 'Compute', 'Monitoring and logging', 'Storage', 'Networking', 'b', 1]
     ];
-
     for (const q of questions) {
-      prepare('INSERT INTO questions (test_id, question_text, option_a, option_b, option_c, option_d, correct_answer, marks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(test.id, ...q);
+      await prepare('INSERT INTO questions (test_id, question_text, option_a, option_b, option_c, option_d, correct_answer, marks) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(test.id, ...q);
     }
     console.log('Sample test with 15 questions created and published.');
   } else {
     console.log('Database already has tests.');
   }
-}
-
-// Run standalone
-if (require.main === module) {
-  initDb().then(() => seed()).catch(e => { console.error(e); process.exit(1); });
 }
 
 module.exports = { seed };
