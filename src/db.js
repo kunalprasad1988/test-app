@@ -6,9 +6,11 @@ const crypto = require('crypto');
 const DB_PATH = path.join(__dirname, '..', 'data.db');
 const ENCRYPTION_KEY = crypto.scryptSync('test-app-secret-key-change-in-prod', 'salt', 32);
 
-let db;
+let db = null;
+let initialized = false;
 
 async function initDb() {
+  if (initialized) return db;
   const SQL = await initSqlJs();
   if (fs.existsSync(DB_PATH)) {
     const buf = fs.readFileSync(DB_PATH);
@@ -26,7 +28,9 @@ async function initDb() {
       full_name TEXT,
       team_name TEXT,
       created_at TEXT DEFAULT (datetime('now'))
-    );
+    )
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS tests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
@@ -37,7 +41,9 @@ async function initDb() {
       randomize_questions INTEGER DEFAULT 1,
       created_by INTEGER,
       created_at TEXT DEFAULT (datetime('now'))
-    );
+    )
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS questions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       test_id INTEGER,
@@ -48,7 +54,9 @@ async function initDb() {
       option_d TEXT,
       correct_answer TEXT,
       marks INTEGER DEFAULT 1
-    );
+    )
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER,
@@ -60,7 +68,9 @@ async function initDb() {
       total_marks INTEGER,
       answers_encrypted TEXT,
       question_order TEXT
-    );
+    )
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS violations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id INTEGER,
@@ -69,7 +79,9 @@ async function initDb() {
       type TEXT NOT NULL,
       timestamp TEXT DEFAULT (datetime('now')),
       details TEXT
-    );
+    )
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS audit_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER,
@@ -77,13 +89,15 @@ async function initDb() {
       details TEXT,
       ip_address TEXT,
       timestamp TEXT DEFAULT (datetime('now'))
-    );
+    )
   `);
   saveDb();
+  initialized = true;
   return db;
 }
 
 function saveDb() {
+  if (!db) return;
   const data = db.export();
   fs.writeFileSync(DB_PATH, Buffer.from(data));
 }
@@ -94,7 +108,6 @@ function prepare(sql) {
       const stmt = db.prepare(sql);
       try {
         if (params.length > 0) {
-          // Convert undefined/null params
           const cleaned = params.map(p => p === undefined ? null : p);
           stmt.bind(cleaned);
         }
@@ -102,9 +115,16 @@ function prepare(sql) {
       } finally {
         stmt.free();
       }
+      // Get last insert rowid using db.exec
+      let lastId = 0;
+      try {
+        const rows = db.exec("SELECT last_insert_rowid()");
+        if (rows.length > 0 && rows[0].values.length > 0) {
+          lastId = rows[0].values[0][0];
+        }
+      } catch(e) {}
       saveDb();
-      const r = db.exec("SELECT last_insert_rowid() as id");
-      return { lastInsertRowid: r[0] ? r[0].values[0][0] : 0 };
+      return { lastInsertRowid: lastId };
     },
     get(...params) {
       const stmt = db.prepare(sql);

@@ -2,8 +2,6 @@ const bcrypt = require('bcryptjs');
 const { initDb, prepare } = require('./db');
 
 async function seed() {
-  await initDb();
-
   // Create admin if not exists
   const admin = prepare('SELECT * FROM users WHERE username = ?').get('admin');
   if (!admin) {
@@ -45,8 +43,9 @@ async function seed() {
   }
 }
 
+// Run standalone
 if (require.main === module) {
-  seed().catch(e => { console.error(e); process.exit(1); });
+  initDb().then(() => seed()).catch(e => { console.error(e); process.exit(1); });
 }
 
 module.exports = { seed };
